@@ -25,19 +25,19 @@ public class BillingController {
 
     @GetMapping("/api/me/subcription")
     public ResponseEntity<SubscriptionResponse> getMySubscription() {
-        Long userId = 1;
+        Long userId = 1L;
         return ResponseEntity.ok(subscriptionService.getCurrentSubscription(userId));
     }
 
     @PostMapping("/api/stripe/checkout")
     public ResponseEntity<CheckoutResponse> createCheckoutResponse(@RequestBody CheckoutRequest request) {
-        Long userId = 1;
+        Long userId = 1L;
         return ResponseEntity.ok(subscriptionService.createCheckoutSessionUrl(request, userId));
     }
 
     @PostMapping("/api/stripe/portal")
     public ResponseEntity<PortalResponse> openCustomerPortal() {
-        Long userId = 1;
+        Long userId = 1L;
         return ResponseEntity.ok(subscriptionService.openCustomerPortal(userId));
     }
 }
