@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.List;
 
 public interface ProjectMemberService {
-    List<ProjectMember> getProjectMembers(Long userId, Long projectId);
+    List<MemberResponse> getProjectMembers(Long userId, Long projectId);
 
     MemberResponse inviteMember(Long projectId, InviteMemberRequest request, Long userId);
 
