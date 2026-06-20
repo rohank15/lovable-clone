@@ -11,13 +11,14 @@ import com.rohan.lovable_clone.mapper.ProjectMemberMapper;
 import com.rohan.lovable_clone.repository.ProjectMemberRepository;
 import com.rohan.lovable_clone.repository.ProjectRepository;
 import com.rohan.lovable_clone.repository.UserRepository;
+import com.rohan.lovable_clone.security.AuthUtil;
 import com.rohan.lovable_clone.service.ProjectMemberService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -30,31 +31,29 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     private final ProjectMemberRepository projectMemberRepository;
     private final UserRepository userRepository;
 
+    private final AuthUtil authUtil;
+
     @Override
-    public List<MemberResponse> getProjectMembers(Long userId, Long projectId) {
+    @PreAuthorize("@security.canViewMembers(#projectId)")
+    public List<MemberResponse> getProjectMembers(Long projectId) {
+        Long userId = authUtil.getCurrentUserId();
+
         Project project = getAccessibleProjectById(projectId, userId);
 
-        List<MemberResponse> memberResponseList = new ArrayList<>();
-        memberResponseList.add(projectMemberMapper.toProjectMemberResponseFromOwner(project.getOwner()));
-
-        memberResponseList.addAll(
-                projectMemberRepository.findByProjectId(projectId)
-                        .stream()
-                        .map(projectMemberMapper::toProjectMemberResponseFromMember)
-                        .toList());
-
-        return memberResponseList;
+        return projectMemberRepository.findByProjectId(projectId)
+                .stream()
+                .map(projectMemberMapper::toProjectMemberResponseFromMember)
+                .toList();
     }
 
     @Override
-    public MemberResponse inviteMember(Long projectId, InviteMemberRequest request, Long userId) {
+    @PreAuthorize("@security.canManageMembers(#projectId)")
+    public MemberResponse inviteMember(Long projectId, InviteMemberRequest request) {
+        Long userId = authUtil.getCurrentUserId();
+
         Project project = getAccessibleProjectById(projectId, userId);
 
-        if(!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Not allowed");
-        }
-
-        User invitee = userRepository.findByEmail(request.email()).orElseThrow();
+        User invitee = userRepository.findByUsername(request.username()).orElseThrow();
 
         if(invitee.getId().equals(userId)) {
             throw new RuntimeException("Cannot invite yourself");
@@ -80,12 +79,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
-    public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateMemberRoleRequest request, Long userId) {
-        Project project = getAccessibleProjectById(projectId, userId);
+    @PreAuthorize("@security.canManageMembers(#projectId)")
+    public MemberResponse updateMemberRole(Long projectId, Long memberId, UpdateMemberRoleRequest request) {
+        Long userId = authUtil.getCurrentUserId();
 
-        if(!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Not allowed");
-        }
+        Project project = getAccessibleProjectById(projectId, userId);
 
         ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
         ProjectMember member = projectMemberRepository.findById(projectMemberId).orElseThrow();
@@ -98,12 +96,11 @@ public class ProjectMemberServiceImpl implements ProjectMemberService {
     }
 
     @Override
-    public void removeProjectMember(Long projectId, Long memberId, Long userId) {
-        Project project = getAccessibleProjectById(projectId, userId);
+    @PreAuthorize("@security.canManageMembers(#projectId)")
+    public void removeProjectMember(Long projectId, Long memberId) {
+        Long userId = authUtil.getCurrentUserId();
 
-        if(!project.getOwner().getId().equals(userId)) {
-            throw new RuntimeException("Not allowed");
-        }
+        Project project = getAccessibleProjectById(projectId, userId);
 
         ProjectMemberId projectMemberId = new ProjectMemberId(projectId, memberId);
         if(!projectMemberRepository.existsById(projectMemberId)) {
